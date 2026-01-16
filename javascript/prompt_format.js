@@ -279,19 +279,29 @@ class LeFormatter {
 			"img2img_enqueue",
 		];
 
+		// NOTE: Forge/A1111 Gradio reads prompt values from its internal state.
+		// If we only mutate the textarea value (without updateInput), the UI will show
+		// the cleaned prompt but the backend request can still use the *old* prompt.
+		//
+		// Fix: when auto-formatting on Generate/Enqueue, FORCE updateInput and run in
+		// capture phase so this happens before the webui's own click handler.
 		for (const id of IDs) {
 			const button = document.getElementById(id);
-			button?.addEventListener("click", () => {
-				if (!config.autoRun) return;
-				for (const field of config.promptFields)
-					LeFormatter.formatPipeline(
-						field,
-						config.dedupe,
-						config.rmUnderscore,
-						config.refresh,
-						config.comma,
-					);
-			});
+			button?.addEventListener(
+				"click",
+				() => {
+					if (!config.autoRun) return;
+					for (const field of config.promptFields)
+						LeFormatter.formatPipeline(
+							field,
+							config.dedupe,
+							config.rmUnderscore,
+							true, // force updateInput before submit
+							config.comma,
+						);
+				},
+				{ capture: true },
+			);
 		}
 
 		if (!config.paste) return;
